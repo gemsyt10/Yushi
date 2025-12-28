@@ -1,0 +1,95 @@
+ /* Базові стилі і розташування футера */
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            margin: 0;
+           background: rgb(5, 17, 40);
+            color: #FFFFFF;
+            font-family: Arial, sans-serif;
+        }
+
+        #chat-girl-info,
+        #chat-girl-text,
+        #chat-girl-in {
+            flex: 0 0 auto;
+        }
+
+        footer {
+            margin-top: auto; /* футер відсувається вниз */
+            text-align: center;
+            font-size: 12px;
+            color: #888;
+            padding: 10px;
+            font-size:5px;
+            background-color:#0B111F;
+        }
+
+        #chat-girl-avatar {
+            display: inline-block;
+            width: 90px;
+            height: 105px;
+            border: 3px solid #1F2A3A;
+            border-radius: 50px;
+        }
+
+        h2 {
+            display: inline;
+            font-weight: bold;
+            font-size: 25px;
+            color: white;
+            margin-left: 10px;
+            font-family: 'Pacifico', cursive;
+        }
+
+        .yushi-text, .your-text {
+            background-color: #121B2E;
+            color: white;
+            font-weight: bold;
+            padding: 25px;
+            border-radius: 20px
+            margin: 10px 0;
+        }
+
+        .yushi-text { text-align: left; }
+        .your-text { text-align: right; }
+
+        input {
+            background: #111827;
+            border: 2px solid #6C63FF;
+            color: #FFFFFF;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-weight: bold;
+            width: 70%;
+        }
+        input:hover {
+            text-shadow:0 0 7px rgb(135, 102, 254);
+        }
+
+        input::placeholder { color: #C7D2FE; }
+
+        button {
+            background: #6C63FF;
+            color: #FFFFFF;
+            border: 2px solid #8B85FF;
+            border-radius: 12px;
+            padding: 10px 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        button:hover { 
+            background: #8B85FF; 
+            box-shadow: 0 0 20px rgb(135, 102, 254);
+        }
+        button:active { transform: scale(0.96); }
+
+        #chat-girl-in { padding-top: 30px; }
+
+        /* Додатково можна зробити контейнер для контенту */
+        #content {
+            flex: 1 0 auto;
+            padding: 20px;
+        }
