@@ -16,3 +16,8 @@
 
 ## 🗂️ Розміщення файлів
 index.html style.css scripts/ ├─ script.js ├─ small.js ├─ small_st2.js ├─ medium.js └─ big.js avatars/ ├─ normal.png ├─ sad.png ├─ happy.png ├─ love.png └─ waiting.png
+
+---
+
+## Силка на сайт
+https://gemsyt10.github.io/Yushi/
