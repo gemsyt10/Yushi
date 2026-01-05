@@ -160,4 +160,4 @@ export const small_library_yushi_st2=[
     ]
   }
 }
-];
+]
