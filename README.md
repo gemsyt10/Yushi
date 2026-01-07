@@ -37,4 +37,4 @@
 ---
 
 ## Силка на сайт
-https://gemsyt10.github.io/Yushi/
+https://gemsyt10.github.io/Yushi-chat-supporter/
