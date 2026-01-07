@@ -1,7 +1,8 @@
-import { small_library_yushi } from "./small.js";
-import { small_library_yushi_st2 } from "./small_st2.js";
-import { big_library_yushi } from "./big.js";
-import { medium_library_yushi } from "./medium.js";
+import { small_library_yushi } from "./dialoguage_libraries/small.js";
+import { small_library_yushi_st2 } from "./dialoguage_libraries/small_st2.js";
+import { big_library_yushi } from "./dialoguage_libraries/big.js";
+import { medium_library_yushi } from "./dialoguage_libraries/medium.js";
+import { medium_library_yushi_st2 } from "./dialoguage_libraries/medium_st2.js";
 import { mainDictionary } from "./wordgame.js";
 
 /* =====================
@@ -10,6 +11,7 @@ import { mainDictionary } from "./wordgame.js";
 const responses = [
     ...big_library_yushi,
     ...medium_library_yushi,
+    ...medium_library_yushi_st2,
     ...small_library_yushi,
     ...small_library_yushi_st2
 ];
