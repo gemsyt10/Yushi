@@ -3,6 +3,7 @@
 ========================= */
 * {
     box-sizing: border-box;
+    font-weight: bold;
 }
 
 body {
@@ -123,6 +124,7 @@ button {
     font-weight: bold;
     cursor: pointer;
     transition: 0.2s ease;
+    font-size: 15px;
 }
 
 button:hover {
@@ -146,7 +148,9 @@ footer {
     background-color: #0B111F;
 }
 footer:hover {
-    
+    font-size:12px;
+    text-shadow: 2px 2px 2px #fff;
+    color:white;
 }
 /* =========================
    АНІМАЦІЇ
