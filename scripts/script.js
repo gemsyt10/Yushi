@@ -1,22 +1,27 @@
 import { small_library_yushi } from "./dialoguage_libraries/small.js";
 import { small_library_yushi_st2 } from "./dialoguage_libraries/small_st2.js";
+import { small_library_yushi_st3 } from "./dialoguage_libraries/small_st3.js"
 import { big_library_yushi } from "./dialoguage_libraries/big.js";
 import { big_library_yushi_st2 } from "./dialoguage_libraries/big_st2.js"
 import { medium_library_yushi } from "./dialoguage_libraries/medium.js";
 import { medium_library_yushi_st2 } from "./dialoguage_libraries/medium_st2.js";
 import { medium_library_yushi_st3 } from "./dialoguage_libraries/medium_st3.js"
 import { mainDictionary } from "./wordgame.js";
+import { other_library_yushi } from "./dialoguage_libraries/z_other.js"
 
 /* =====================
    RESPONSES
 ===================== */
 const responses = [
     ...big_library_yushi,
+    ...big_library_yushi_st2,
     ...medium_library_yushi,
     ...medium_library_yushi_st2,
     ...medium_library_yushi_st3,
     ...small_library_yushi,
-    ...small_library_yushi_st2
+    ...small_library_yushi_st2,
+    ...small_library_yushi_st3,
+    ...other_library_yushi
 ];
 const proverbsWords = JSON.parse(localStorage.getItem("proverbsWords")) || [];
 
