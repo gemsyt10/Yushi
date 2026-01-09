@@ -1,8 +1,10 @@
 import { small_library_yushi } from "./dialoguage_libraries/small.js";
 import { small_library_yushi_st2 } from "./dialoguage_libraries/small_st2.js";
 import { big_library_yushi } from "./dialoguage_libraries/big.js";
+import { big_library_yushi_st2 } from "./dialoguage_libraries/big_st2.js"
 import { medium_library_yushi } from "./dialoguage_libraries/medium.js";
 import { medium_library_yushi_st2 } from "./dialoguage_libraries/medium_st2.js";
+import { medium_library_yushi_st3 } from "./dialoguage_libraries/medium_st3.js"
 import { mainDictionary } from "./wordgame.js";
 
 /* =====================
@@ -12,9 +14,11 @@ const responses = [
     ...big_library_yushi,
     ...medium_library_yushi,
     ...medium_library_yushi_st2,
+    ...medium_library_yushi_st3,
     ...small_library_yushi,
     ...small_library_yushi_st2
 ];
+const proverbsWords = JSON.parse(localStorage.getItem("proverbsWords")) || [];
 
 /* =====================
    DOM
@@ -60,13 +64,11 @@ function buildResponseIndex() {
         if (!item.triggers || !Array.isArray(item.triggers)) return;
         item.triggers.forEach(trigger => {
             if (!trigger || typeof trigger !== 'string') return;
-            const key = normalizeText(trigger);
-            if (key) {
-                if (!responseIndex.has(key)) {
-                    responseIndex.set(key, []);
-                }
-                responseIndex.get(key).push(index);
+            // Зберігаємо оригінальний тригер для точної перевірки
+            if (!responseIndex.has(trigger.toLowerCase())) {
+                responseIndex.set(trigger.toLowerCase(), []);
             }
+            responseIndex.get(trigger.toLowerCase()).push(index);
         });
     });
 }
@@ -94,12 +96,12 @@ function setLove(val) {
 function updateAvatarByLove() {
     const love = getLove();
     let newAvatar = AVATARS.normal;
-    
+
     if (love <= 20) newAvatar = AVATARS.sad;
     else if (love <= 50) newAvatar = AVATARS.normal;
     else if (love <= 80) newAvatar = AVATARS.happy;
     else newAvatar = AVATARS.love;
-    
+
     const img = new Image();
     img.onload = () => {
         avatarEl.src = newAvatar;
@@ -128,7 +130,7 @@ function startWaitingTimer() {
     waitingTimer = setTimeout(() => {
         avatarEl.src = AVATARS.waiting;
         typeText(yushitext, "Ти ще є, ми нікуди не пішли.. 🥺");
-    }, 30000);
+    }, 60000);
 }
 
 /* =====================
@@ -175,7 +177,7 @@ function generateBotWord(lastLetter) {
             w[0] !== "'"
         )
         : ["кіт", "тато", "омар", "рак", "корова", "авто", "орел", "лист", "стіл", "луна"];
-    
+
     if (!availableWords.length) {
         const fallbackWords = mainDictionary && Array.isArray(mainDictionary)
             ? mainDictionary.filter(w => 
@@ -185,36 +187,36 @@ function generateBotWord(lastLetter) {
                 w[0] !== "'"
             )
             : ["кіт", "тато", "омар", "рак"];
-        
+
         return fallbackWords.length > 0 
             ? fallbackWords[Math.floor(Math.random() * fallbackWords.length)]
             : "слово";
     }
-    
+
     return availableWords[Math.floor(Math.random() * availableWords.length)];
 }
 
 function wordGameLogic(userWord) {
     userWord = normalizeText(userWord);
-    
+
     if (userWord.length < 2) {
         return "Слово закоротке 🤔";
     }
-    
+
     if (userWord[0] === "ь" || userWord[0] === "'") {
         return "Слова не можуть починатися на Ь або апостроф ❌";
     }
-    
+
     if (wordGameHistory.includes(userWord)) {
         return "Це слово вже було! Спробуй інше 🔄";
     }
-    
+
     wordGameHistory.push(userWord);
-    
+
     if (wordGameHistory.length > 50) {
         wordGameHistory = wordGameHistory.slice(-50);
     }
-    
+
     if (!lastWord) {
         lastWord = userWord;
         const botWord = generateBotWord(lastWord.at(-1));
@@ -225,19 +227,19 @@ function wordGameLogic(userWord) {
         wordGameHistory.push(botWord);
         return `Моє слово: ${botWord.toUpperCase()}. Тобі на ${botWord.at(-1).toUpperCase()}`;
     }
-    
+
     if (userWord[0] !== lastWord.at(-1)) {
         return `Треба на "${lastWord.at(-1).toUpperCase()}" ❌`;
     }
-    
+
     const botWord = generateBotWord(userWord.at(-1));
     if (!botWord) {
         return "Я не знаю слів на цю літеру... Перемага твоя! 🏆";
     }
-    
+
     lastWord = botWord;
     wordGameHistory.push(botWord);
-    
+
     return `Моє слово: ${botWord.toUpperCase()}. Тобі на ${botWord.at(-1).toUpperCase()}`;
 }
 
@@ -246,22 +248,22 @@ function wordGameLogic(userWord) {
 ===================== */
 function normalizeText(text, preservePunctuation = false) {
     if (typeof text !== 'string') return '';
-    
+
     let result = text.toLowerCase();
     result = result.replace(/ё/g, "е");
-    
+
     if (!preservePunctuation) {
         result = result.replace(/[^\p{L}\p{N}\s]/gu, "");
     }
-    
+
     result = result.replace(/\s+/g, " ").trim();
-    
+
     return result;
 }
 
 function random(arr) {
     if (!Array.isArray(arr) || !arr.length) return "";
-    
+
     const filtered = arr.filter(a => a !== lastBotAnswer);
     const pool = filtered.length ? filtered : arr;
     const res = pool[Math.floor(Math.random() * pool.length)];
@@ -283,6 +285,34 @@ function isOnlyEmojis(text) {
     if (typeof text !== 'string') return false;
     const withoutEmojis = text.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}\s]/gu, "");
     return withoutEmojis.length === 0 && text.trim().length > 0;
+}
+
+/* =====================
+   ТОЧНА ПЕРЕВІРКА НА СПІВПАДІННЯ
+===================== */
+function exactMatchResponse(text) {
+    const lowerText = text.toLowerCase().trim();
+    
+    // Перевірка точних співпадінь
+    for (const item of responses) {
+        if (!item.triggers || !Array.isArray(item.triggers)) continue;
+        
+        for (const trigger of item.triggers) {
+            // Перевірка точного співпадіння
+            if (trigger.toLowerCase() === lowerText) {
+                return random(item.answers);
+            }
+            
+            // Перевірка співпадіння з урахуванням закінчень
+            if (lowerText.startsWith(trigger.toLowerCase() + ' ') || 
+                lowerText.endsWith(' ' + trigger.toLowerCase()) ||
+                lowerText.includes(' ' + trigger.toLowerCase() + ' ')) {
+                return random(item.answers);
+            }
+        }
+    }
+    
+    return null;
 }
 
 /* =====================
@@ -361,7 +391,7 @@ const LOVE_KEYWORDS = {
             "ти моя образа", "ти моя ревнощі", "ти моя заздрість",
             "ти моя гордість", "ти моя скромність", "ти моя впевненість",
             "ти моя сміливість", "ти моя хоробрість", "ти моя мужність",
-            "ти моя сила", "ти моя слабкість", "ти моя вразливість",
+            "ти моя сила", "ти моя вразливість",
             "ти моя чутливість", "ти моя емоційність", "ти моя раціональність",
             "ти моя логіка", "ти моя інтуїція", "ти моя мудрість",
             "ти моя досвідченість", "ти моя недосвідченість", "ти моя наївність",
@@ -378,13 +408,7 @@ const LOVE_KEYWORDS = {
             "тупий", "дурний", "нікчема", "недоумок", "кретин", "ідіотка", 
             "дура", "дебілка", "тупа", "дурна", "нікчемна", "кретинка", 
             "уродка", "страшна", "потворна", "огидна", "огидний", "гидко",
-            "відчай", "розпач", "безнадія", "відчаю", "відчай", "відчаї",
-            "відчайдушний", "відчайдушна", "відчайдушне", "відчайдушні",
-            "відчайдушним", "відчайдушними", "відчайдушного", "відчайдушної",
-            "відчайдушному", "відчайдушній", "відчайдушних", "відчайдушнім",
-            "відчайдушним", "відчайдушними", "відчайдушному", "відчайдушній",
-            "відчайдушних", "відчайдушнім", "відчайдушним", "відчайдушними",
-            "відчайдушному", "відчайдушній", "відчайдушних", "відчайдушнім"
+            "відчай", "розпач", "безнадія", "відчаю", "відчай", "відчаї"
         ],
         points: -2
     },
@@ -419,126 +443,75 @@ const LOVE_KEYWORDS = {
         points: -3
     }
 };
+/*
+}}}}}}}}}} ST 2 {{{{{{{{
+*/
 
 /* =====================
    LOVE CALCULATION
 ===================== */
 function calculateLovePoints(text) {
     if (!text || typeof text !== 'string') return 0;
-    
+
     const lowerText = normalizeText(text);
     let points = 0;
-    
+
     for (const word of LOVE_KEYWORDS.positive.words) {
         if (lowerText.includes(word)) {
             points += LOVE_KEYWORDS.positive.points;
         }
     }
-    
+
     for (const phrase of LOVE_KEYWORDS.veryPositive.phrases) {
         if (lowerText.includes(phrase)) {
             points += LOVE_KEYWORDS.veryPositive.points;
             break;
         }
     }
-    
+
     for (const word of LOVE_KEYWORDS.negative.words) {
         if (lowerText.includes(word)) {
             points += LOVE_KEYWORDS.negative.points;
         }
     }
-    
+
     for (const phrase of LOVE_KEYWORDS.veryNegative.phrases) {
         if (lowerText.includes(phrase)) {
             points += LOVE_KEYWORDS.veryNegative.points;
             break;
         }
     }
-    
+
     const happyEmojiCount = (text.match(/[😘😊🥰😍🤗💖💕💗💓💞💘💝💟❤️🧡💛💚💙💜🤎🖤🤍💯✨🌟⭐🌠🎇🎆🌈☀️🌤️⛅🌥️🌦️🌧️⛈️🌩️🌨️☃️⛄❄️🌪️🌀💐🌸💮🏵️🌹🥀🌺🌻🌼🌷]/gu) || []).length;
     const sadEmojiCount = (text.match(/[😔😞😢😭🥺😩😫😖😣😕🙁☹️😟😤😠😡🤬💔🖤💢😶🌧️⛈️🌩️🌨️☃️⛄❄️🌪️🌀💐🥀]/gu) || []).length;
-    
+
     points += Math.min(3, happyEmojiCount * 0.5);
     points -= Math.min(3, sadEmojiCount * 0.5);
-    
+
     return Math.max(-5, Math.min(5, points));
 }
 
 function updateLoveBasedOnMessage(text) {
     const points = calculateLovePoints(text);
     if (points === 0) return;
-    
+
     let love = getLove();
     love += points;
-    
+
     love = Math.max(0, Math.min(100, love));
     setLove(love);
-    
+
     if (points >= 3) {
         typeText(yushitext, "Твої слова такі теплі... вони розтоплюють моє серце 🫠", 30);
     } else if (points <= -3) {
         triggerSadAvatar(8000);
         typeText(yushitext, "Це боляче... навіть для віртуального серця 💔", 30);
     }
-    
+
     localStorage.setItem('last_love_change', points);
     localStorage.setItem('last_love_update', Date.now());
 }
 
-function getLoveStatus() {
-    const love = getLove();
-    
-    if (love <= 10) return {
-        level: "very_low",
-        emoji: "💔",
-        description: "Дуже низький рівень прив'язаності",
-        mood: "сумна"
-    };
-    else if (love <= 30) return {
-        level: "low",
-        emoji: "😔",
-        description: "Низький рівень прив'язаності",
-        mood: "засмучена"
-    };
-    else if (love <= 50) return {
-        level: "neutral",
-        emoji: "😐",
-        description: "Нейтральні стосунки",
-        mood: "нейтральна"
-    };
-    else if (love <= 80) return {
-        level: "good",
-        emoji: "😊",
-        description: "Гарні стосунки",
-        mood: "щаслива"
-    };
-    else if (love <= 90) return {
-        level: "high",
-        emoji: "🥰",
-        description: "Високий рівень прив'язаності",
-        mood: "дуже щаслива"
-    };
-    else return {
-        level: "very_high",
-        emoji: "😍",
-        description: "Дуже високий рівень прив'язаності",
-        mood: "закохана"
-    };
-}
-
-function handleLoveCommands(text) {
-    const lower = normalizeText(text);
-    
-    if (lower.includes("скільки любові") || lower.includes("рівень любові") || lower.includes("любов рівень")) {
-        const love = getLove();
-        const status = getLoveStatus();
-        return `Рівень нашої прив'язаності: ${love}/100 ${status.emoji}
-${status.description}
-Я почуваюся ${status.mood} з тобою 💖`;
-    }
-    
-    return null;
-}
 
 /* =====================
    BAD WORDS
@@ -552,18 +525,14 @@ function containsBadWords(text) {
     const normalized = normalizeText(text);
     return BAD_WORDS.some(word => normalized.includes(word));
 }
-/*=============
-===========
-ST 2
-===========
-=============*/
+
 /* =====================
-   MATCH PHRASES
+   MATCH PHRASES - ПОКРАЩЕНА ВЕРСІЯ
 ===================== */
 function matchResponses(text, originalText) {
     if (!text || typeof text !== 'string') return null;
-    
-    // Handle emojis - exact match
+
+    // 1. Точне співпадіння для емодзі
     if (isOnlyEmojis(originalText)) {
         const emojiText = originalText.trim();
         for (const item of responses) {
@@ -571,125 +540,100 @@ function matchResponses(text, originalText) {
             
             for (const trigger of item.triggers) {
                 if (trigger === emojiText) {
-                    // Check if there's follow_up from previous interaction
-                    const hasFollowUp = item.follow_up && item.follow_up.triggers && item.follow_up.answers;
-                    if (hasFollowUp) {
-                        // Store context for follow-up
-                        sessionStorage.setItem('last_follow_up', JSON.stringify({
-                            triggers: item.follow_up.triggers,
-                            answers: item.follow_up.answers
-                        }));
-                    }
                     return random(item.answers);
                 }
             }
         }
         return null;
     }
+
+    const lowerText = text.toLowerCase().trim();
     
-    const input = normalizeText(text);
-    const words = input.split(' ');
-    
-    // Check follow-up first
-    const lastFollowUp = sessionStorage.getItem('last_follow_up');
-    if (lastFollowUp) {
-        try {
-            const followUpData = JSON.parse(lastFollowUp);
-            for (const trigger of followUpData.triggers) {
-                if (input.includes(normalizeText(trigger))) {
-                    // Clear follow-up after match
-                    sessionStorage.removeItem('last_follow_up');
-                    return random(followUpData.answers);
+    // 2. Перевірка точних співпадінь з оригінальними тригерами
+    const exactMatches = responseIndex.get(lowerText);
+    if (exactMatches && exactMatches.length > 0) {
+        const item = responses[exactMatches[0]];
+        return random(item.answers);
+    }
+
+    // 3. Перевірка на початок або кінець речення
+    for (const item of responses) {
+        if (!item.triggers || !Array.isArray(item.triggers)) continue;
+        
+        for (const trigger of item.triggers) {
+            const triggerLower = trigger.toLowerCase();
+            
+            // Перевірка точного співпадіння з урахуванням пробілів
+            if (lowerText === triggerLower) {
+                return random(item.answers);
+            }
+            
+            // Перевірка якщо тригер є на початку речення
+            if (lowerText.startsWith(triggerLower + ' ')) {
+                return random(item.answers);
+            }
+            
+            // Перевірка якщо тригер є в кінці речення
+            if (lowerText.endsWith(' ' + triggerLower) || 
+                lowerText.endsWith(' ' + triggerLower + '.')) {
+                return random(item.answers);
+            }
+            
+            // Перевірка якщо тригер є окремим словом
+            if (lowerText.includes(' ' + triggerLower + ' ')) {
+                return random(item.answers);
+            }
+            
+            // Для коротких тригерів (1-2 слова) перевіряємо як окремі слова
+            const words = lowerText.split(' ');
+            const triggerWords = triggerLower.split(' ');
+            
+            if (triggerWords.length === 1 && words.includes(triggerWords[0])) {
+                // Для однослівних тригерів
+                return random(item.answers);
+            }
+            
+            if (triggerWords.length === 2) {
+                // Для двослівних тригерів
+                let foundBoth = true;
+                for (const tWord of triggerWords) {
+                    if (!lowerText.includes(tWord)) {
+                        foundBoth = false;
+                        break;
+                    }
+                }
+                if (foundBoth) {
+                    return random(item.answers);
                 }
             }
-        } catch (e) {
-            sessionStorage.removeItem('last_follow_up');
         }
     }
-    
-    // Search in index for exact word matches
+
+    // 4. Звичайна перевірка з індексу для часткових співпадінь
+    const words = lowerText.split(' ');
     let bestMatch = null;
     let bestWeight = 0;
-    let bestItem = null;
-    
+
     for (const word of words) {
         if (word.length < 2) continue;
-        
+
         const matches = responseIndex.get(word);
         if (matches) {
             matches.forEach(index => {
                 const item = responses[index];
-                // Check if any trigger fully matches
-                for (const trigger of item.triggers) {
-                    const t = normalizeText(trigger);
-                    if (t && input.includes(t)) {
-                        const weight = t.length * 2; // Full phrase match gets double weight
-                        if (weight > bestWeight) {
-                            bestWeight = weight;
-                            bestMatch = trigger;
-                            bestItem = item;
-                        }
-                    }
+                const weight = word.length;
+                if (weight > bestWeight) {
+                    bestWeight = weight;
+                    bestMatch = item;
                 }
             });
         }
     }
-    
-    // If no full phrase match found, search for partial matches
-    if (!bestItem) {
-        for (const item of responses) {
-            if (!item.triggers || !Array.isArray(item.triggers)) continue;
-            
-            for (const trigger of item.triggers) {
-                const t = normalizeText(trigger);
-                if (t && input.includes(t)) {
-                    const weight = t.length;
-                    if (weight > bestWeight) {
-                        bestWeight = weight;
-                        bestMatch = trigger;
-                        bestItem = item;
-                    }
-                }
-                
-                // Also check if any word from trigger is in input
-                const triggerWords = t.split(' ');
-                if (triggerWords.length > 1) {
-                    let matchCount = 0;
-                    for (const tw of triggerWords) {
-                        if (tw.length > 1 && input.includes(tw)) {
-                            matchCount++;
-                        }
-                    }
-                    if (matchCount > 0) {
-                        const weight = matchCount * 3; // Multiple word matches get higher weight
-                        if (weight > bestWeight) {
-                            bestWeight = weight;
-                            bestMatch = trigger;
-                            bestItem = item;
-                        }
-                    }
-                }
-            }
-        }
+
+    if (bestMatch) {
+        return random(bestMatch.answers);
     }
-    
-    if (bestItem) {
-        // Store follow-up context if exists
-        if (bestItem.follow_up && bestItem.follow_up.triggers && bestItem.follow_up.answers) {
-            sessionStorage.setItem('last_follow_up', JSON.stringify({
-                triggers: bestItem.follow_up.triggers,
-                answers: bestItem.follow_up.answers
-            }));
-        } else {
-            // Clear any existing follow-up
-            sessionStorage.removeItem('last_follow_up');
-        }
-        
-        return random(bestItem.answers);
-    }
-    
-    // Clear follow-up if no match found
-    sessionStorage.removeItem('last_follow_up');
+
     return null;
 }
 
@@ -699,11 +643,11 @@ function matchResponses(text, originalText) {
 function calculateMath(expression) {
     try {
         expression = expression.replace(/\s+/g, "").replace(/=/g, "");
-        
+
         if (!/^[\d+\-*/().]+$/.test(expression)) {
             return null;
         }
-        
+
         const dangerousPatterns = [
             /\.\./,
             /\/\//,
@@ -713,42 +657,42 @@ function calculateMath(expression) {
             /\[/, /\]/,
             /\\/
         ];
-        
+
         if (dangerousPatterns.some(pattern => pattern.test(expression))) {
             return null;
         }
-        
+
         if (/\/0(?!\.)/.test(expression) || /\/0\.0*$/.test(expression)) {
             return null;
         }
-        
+
         const evaluate = (expr) => {
             expr = expr.replace(/^\((.*)\)$/, '$1');
-            
+
             while (expr.includes('(')) {
                 const start = expr.lastIndexOf('(');
                 const end = expr.indexOf(')', start);
-                
+
                 if (end === -1) return null;
-                
+
                 const inner = expr.substring(start + 1, end);
                 const innerResult = evaluate(inner);
-                
+
                 if (innerResult === null) return null;
-                
+
                 expr = expr.substring(0, start) + innerResult + expr.substring(end + 1);
             }
-            
+
             const mulDivRegex = /(-?\d+(?:\.\d+)?)\s*([*/])\s*(-?\d+(?:\.\d+)?)/;
             let match;
-            
+
             while ((match = expr.match(mulDivRegex))) {
                 const [full, aStr, op, bStr] = match;
                 const a = parseFloat(aStr);
                 const b = parseFloat(bStr);
-                
+
                 if (isNaN(a) || isNaN(b)) return null;
-                
+
                 let result;
                 if (op === '*') {
                     result = a * b;
@@ -756,35 +700,35 @@ function calculateMath(expression) {
                     if (b === 0) return null;
                     result = a / b;
                 }
-                
+
                 expr = expr.replace(full, result.toString());
             }
-            
+
             const addSubRegex = /(-?\d+(?:\.\d+)?)\s*([+-])\s*(-?\d+(?:\.\d+)?)/;
-            
+
             while ((match = expr.match(addSubRegex))) {
                 const [full, aStr, op, bStr] = match;
                 const a = parseFloat(aStr);
                 const b = parseFloat(bStr);
-                
+
                 if (isNaN(a) || isNaN(b)) return null;
-                
+
                 const result = op === '+' ? a + b : a - b;
                 expr = expr.replace(full, result.toString());
             }
-            
+
             const final = parseFloat(expr);
             return isNaN(final) ? null : final;
         };
-        
+
         const result = evaluate(expression);
-        
+
         if (result === null || !isFinite(result)) {
             return null;
         }
-        
+
         return Math.round(result * 1000000) / 1000000;
-        
+
     } catch (error) {
         console.error('Math calculation error:', error);
         return null;
@@ -796,36 +740,44 @@ function calculateMath(expression) {
 ===================== */
 function botAnswer(text) {
     if (typeof text !== 'string' || !text.trim()) return null;
-    
+
     const lower = normalizeText(text);
     const original = text.trim();
     
-    const loveResponse = handleLoveCommands(text);
-    if (loveResponse) return loveResponse;
-    
+    if (lower.includes("котра година") || lower.includes("час") || lower.includes("скільки годин")) {
+        const time = new Date();
+        return  `Зараз ${time.getHours()}:${String(time.getMinutes()).padStart(2,"0")} ⏰`;
+    }
+  if(lower.includes("дата") ||lower.includes("яке сьогодні число")) {
+    const dataTimeOfMonth = new Date();
+    const monthData = dataTimeOfMonth.getMonth();
+    const day = dataTimeOfMonth.getDate();
+    const montOfData =[ "Січня", "Лютого", "Березня", "Квітня", "Травня", "Червня","Липня", "Серпня", "Вересня", "Жовтня", "Листопада", "Грудня" ];
+    return `Сьогодні ${day} ${montOfData[monthData]} 📅`;
+    }
     const stopCommands = ["стоп", "стоп гра", "стоп слова", "закінчити", "кінець гри"];
     if (stopCommands.includes(lower)) {
         restoreGame();
         return "Гру зупинено ✅";
     }
-    
+
     if (lower.startsWith("слово:") || lower.startsWith("слово ") || booword) {
         booword = true;
         const word = lower.replace(/^слово[:\s]+/, "");
         return wordGameLogic(word);
     }
-    
+
     if (/^[\d+\-*/().=\s]+$/.test(original)) {
         const cleaned = original.replace(/=/g, "").trim();
         const result = calculateMath(cleaned);
-        
+
         if (result !== null) {
             return `Результат: ${result} ✅`;
         } else {
-            return "Не можу порахувати, перевір вираз і чи ти використовуєш чі знаки (+, -, / ділення, * множення)";
+            return "Не можу порахувати, перевір вираз і чи ти використовуєш ці знаки (+, -, / ділення, * множення)";
         }
     }
-    
+
     if (lower.startsWith("мене звати ")) {
         const newName = text.slice(11).trim();
         if (newName && newName.length > 0 && newName.length <= 20) {
@@ -837,7 +789,7 @@ function botAnswer(text) {
             return "Ім'я має бути від 1 до 20 символів";
         }
     }
-    
+
     return null;
 }
 
@@ -846,45 +798,37 @@ function botAnswer(text) {
 ===================== */
 function getYushiResponse(text) {
     if (typeof text !== 'string') return "Щось не так з повідомленням...";
-    
+
     updateLoveBasedOnMessage(text);
-    
+
     const love = getLove();
     const lower = normalizeText(text);
-    
+
     let response = "";
-    
-    // Special reactions based on love level
-    
-    
+
     // Bad words reaction
     if (lower.includes("ненавиджу") || containsBadWords(text)) {
         response = "Мені боляче таке чути... 😔";
     }
-    
+
     if (!response) {
         const matched = matchResponses(text, text);
-        
+
         if (matched) {
-            // If response is only emojis but user wrote text
-            if (!hasTextContent(matched) && hasTextContent(text)) {
-                response = `Я не зовсім зрозуміла тебе, ${userName}. Можеш сказати по-іншому?`;
-            } else {
-                response = matched;
-            }
+            response = matched;
         } else {
-            // No match found - creative default responses
+            // No match found
             const defaultResponses = [
                 `Я не зовсім зрозуміла тебе, ${userName}. Можеш сказати по-іншому?`,
-                `Хм... не зовсім розумію. ${userName}, можеш пояснити? 🤔`,
-                `Цікаво... але я не впевнена, що правильно зрозуміла. Розкажи ще раз? `,
+                `Хм... не зовсім розумію. ${userName}, можеш пояснити?`,
+                `Цікаво... але я не впевнена, що правильно зрозуміла. Розкажи ще раз?`,
                 `У тебе така цікава думка! Але я не зовсім її зрозуміла... можеш розповісти детальніше? 💭`,
                 `Ти завжди так цікаво говориш! Але зараз я трохи заплуталась...`
             ];
             response = defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
         }
     }
-    
+
     return response;
 }
 
@@ -893,9 +837,9 @@ function getYushiResponse(text) {
 ===================== */
 function onUserMessage(message) {
     if (typeof message !== 'string') return;
-    
+
     clearTimeout(waitingTimer);
-    
+
     // Rate limiting
     const now = Date.now();
     if (lastMessageTime && now - lastMessageTime < 1000) {
@@ -903,13 +847,13 @@ function onUserMessage(message) {
         return;
     }
     lastMessageTime = now;
-    
+
     // Message length limit
     if (message.length > 500) {
         typeText(yushitext, "Повідомлення занадто довге. Спробуй коротше 😊");
         return;
     }
-    
+
     // Check for repetition
     if (message === lastUserText) {
         repeatCounter++;
@@ -920,13 +864,13 @@ function onUserMessage(message) {
     } else {
         repeatCounter = 0;
     }
-    
+
     lastUserText = message;
-    
+
     // Get response
     let response = botAnswer(message);
     if (!response) response = getYushiResponse(message);
-    
+
     typeText(yushitext, response);
     startWaitingTimer();
 }
@@ -947,13 +891,17 @@ function cleanupTimers() {
 function inputtext() {
     const msg = textinput.value.trim();
     if (!msg) return;
-    
+
     mytext.textContent = msg;
+    proverbsWords.push(msg);
+    if (proverbsWords.length > 100) {
+        proverbsWords.shift(); // Зберігаємо тільки останні 100 повідомлень
+    }
+    localStorage.setItem("proverbsWords", JSON.stringify(proverbsWords));
     textinput.value = "";
     yushitext.textContent = "Юші набирає...";
     setTimeout(() => onUserMessage(msg), 400);
 }
-
 /* =====================
    EVENTS
 ===================== */
@@ -961,6 +909,16 @@ sendBtn.addEventListener("click", inputtext);
 textinput.addEventListener("keydown", e => {
     if (e.key === "Enter") inputtext();
 });
+
+avatarEl.addEventListener("click", () => {
+    let loveLevel = localStorage.getItem("love")
+    if(loveLevel >= 40) {
+        avatarEl.src = AVATARS.happy;
+        setTimeout(function(){
+            avatarEl.src = AVATARS.normal
+        },1000)
+    }
+})
 
 // Clean up timers when page is unloaded
 window.addEventListener('beforeunload', cleanupTimers);
