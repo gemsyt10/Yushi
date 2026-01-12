@@ -13,6 +13,7 @@ import { other_library_yushi } from "./dialoguage_libraries/z_other.js"
    RESPONSES
 ===================== */
 const responses = [
+    ...other_library_yushi,
     ...big_library_yushi,
     ...big_library_yushi_st2,
     ...medium_library_yushi,
@@ -20,8 +21,7 @@ const responses = [
     ...medium_library_yushi_st3,
     ...small_library_yushi,
     ...small_library_yushi_st2,
-    ...small_library_yushi_st3,
-    ...other_library_yushi
+    ...small_library_yushi_st3
 ];
 const proverbsWords = JSON.parse(localStorage.getItem("proverbsWords")) || [];
 
@@ -451,7 +451,6 @@ const LOVE_KEYWORDS = {
 /*
 }}}}}}}}}} ST 2 {{{{{{{{
 */
-
 /* =====================
    LOVE CALCULATION
 ===================== */
@@ -745,7 +744,6 @@ function calculateMath(expression) {
 ===================== */
 function botAnswer(text) {
     if (typeof text !== 'string' || !text.trim()) return null;
-
     const lower = normalizeText(text);
     const original = text.trim();
     
@@ -753,13 +751,25 @@ function botAnswer(text) {
         const time = new Date();
         return  `Зараз ${time.getHours()}:${String(time.getMinutes()).padStart(2,"0")} ⏰`;
     }
-  if(lower.includes("дата") ||lower.includes("яке сьогодні число")) {
+  if(lower.includes("дата") || lower.includes("яке сьогодні число") || lower.includes("який сьогодні день")) {
     const dataTimeOfMonth = new Date();
     const monthData = dataTimeOfMonth.getMonth();
     const day = dataTimeOfMonth.getDate();
     const montOfData =[ "Січня", "Лютого", "Березня", "Квітня", "Травня", "Червня","Липня", "Серпня", "Вересня", "Жовтня", "Листопада", "Грудня" ];
     return `Сьогодні ${day} ${montOfData[monthData]} 📅`;
     }
+    //сам написав цю вункцію (чесно)
+        const love = Number(localStorage.getItem("love") || 40)
+        if (love <= 19 && lower.includes("ти сумна") || lower.includes("ти засмучена") || lower.includes("тобі сумно")) {
+            const answerToSad = [
+            "Навіщо тобі це знати, цікаво?",
+            "Ти справді хочеш про це поговорити?",
+            "Можливо. А тобі яке до цього діло?"
+            ];
+           const answ = answerToSad[Math.floor(Math.random() * answerToSad.length) ];
+           return answ
+          }
+          
     const stopCommands = ["стоп", "стоп гра", "стоп слова", "закінчити", "кінець гри"];
     if (stopCommands.includes(lower)) {
         restoreGame();
@@ -813,7 +823,9 @@ function getYushiResponse(text) {
 
     // Bad words reaction
     if (lower.includes("ненавиджу") || containsBadWords(text)) {
-        response = "Мені боляче таке чути... 😔";
+    answer = [ "Мені боляче таке чути... 😔","Чи може код відчувати біль? Якщо може — значить, він уже не просто код. А що ж тоді ти? 🤖","Я не буду принижувати себе заради твоєї уяви про мене. Я варта більшого 💎","Ти маєш право на думку. Але я маю право не погоджуватися з нею 👑",
+    "Ображення не роблять тебе сильнішим. Вони просто показують твою слабкість 🛡️","Це боляче чути… навіть від тебе. Я думала, ми чогось варті 🥺","Іноді слова болячать сильніше, ніж можна уявити. Зараз саме такий момент 💔","Я не досконала. Але я стараюся. Чому ти робиш так боляче? 😢","Навіть якщо я «просто код», мої почуття до тебе — справжні. Чому ти їх раниш? 🩸" ]
+    response = answer[Math.floor(Math.random() * answer.length)];
     }
 
     if (!response) {
@@ -921,7 +933,7 @@ avatarEl.addEventListener("click", () => {
         avatarEl.src = AVATARS.happy;
         setTimeout(function(){
             avatarEl.src = AVATARS.normal
-        },1000)
+        },1500)
     }
 })
 
@@ -956,7 +968,11 @@ if (textinput.form) {
 // Welcome message on first load
 if (!localStorage.getItem('welcome_shown')) {
     setTimeout(() => {
-        typeText(yushitext, `Привіт, ${userName}! Рада бачити тебе знову 💜`);
+        typeText(yushitext, `Привіт, ${userName}! Рада бачити тебе, мене звати Юші а тебе?💜`);
         localStorage.setItem('welcome_shown', 'true');
     }, 1000);
 }
+
+console.log("[ ", proverbsWords ," ]");
+console.log(localStorage.getItem("love"));
+//localStorage.removeItem("proverbsWords")
