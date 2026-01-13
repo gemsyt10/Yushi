@@ -24,9 +24,15 @@
  ├── 📁 dialoguage_libraries/
  │    ├── small.js
  │    ├── small_st2.js
+ │    ├── small_st3.js
  │    ├── medium.js
  │    ├── medium_st2.js
- │    └── big.js
+ │    ├── medium_st3.js
+ │    ├── big.js
+ │    ├── big_st2.js
+ │    ├── big_st3.js
+ │    └── z_other.js
+ │  
  └── 📁 avatars/
       ├── normal.png
       ├── sad.png
