@@ -1,13 +1,14 @@
 import { small_library_yushi } from "./dialoguage_libraries/small.js";
 import { small_library_yushi_st2 } from "./dialoguage_libraries/small_st2.js";
-import { small_library_yushi_st3 } from "./dialoguage_libraries/small_st3.js"
+import { small_library_yushi_st3 } from "./dialoguage_libraries/small_st3.js";
 import { big_library_yushi } from "./dialoguage_libraries/big.js";
-import { big_library_yushi_st2 } from "./dialoguage_libraries/big_st2.js"
+import { big_library_yushi_st2 } from "./dialoguage_libraries/big_st2.js";
+import { big_library_yushi_st3 } from "./dialoguage_libraries/big_st3.js";
 import { medium_library_yushi } from "./dialoguage_libraries/medium.js";
 import { medium_library_yushi_st2 } from "./dialoguage_libraries/medium_st2.js";
-import { medium_library_yushi_st3 } from "./dialoguage_libraries/medium_st3.js"
+import { medium_library_yushi_st3 } from "./dialoguage_libraries/medium_st3.js";
 import { mainDictionary } from "./wordgame.js";
-import { other_library_yushi } from "./dialoguage_libraries/z_other.js"
+import { other_library_yushi } from "./dialoguage_libraries/z_other.js";
 
 /* =====================
    RESPONSES
@@ -16,6 +17,7 @@ const responses = [
     ...other_library_yushi,
     ...big_library_yushi,
     ...big_library_yushi_st2,
+    ...big_library_yushi_st3,
     ...medium_library_yushi,
     ...medium_library_yushi_st2,
     ...medium_library_yushi_st3,
@@ -59,6 +61,13 @@ let waitingTimer = null;
 let moodTimer = null;
 
 /* =====================
+   GAME STATE
+===================== */
+let booword = false;
+let lastWord = "";
+let gameDictionary = null;
+
+/* =====================
    INDEX FOR FAST SEARCH
 ===================== */
 let responseIndex = null;
@@ -69,7 +78,6 @@ function buildResponseIndex() {
         if (!item.triggers || !Array.isArray(item.triggers)) return;
         item.triggers.forEach(trigger => {
             if (!trigger || typeof trigger !== 'string') return;
-            // Зберігаємо оригінальний тригер для точної перевірки
             if (!responseIndex.has(trigger.toLowerCase())) {
                 responseIndex.set(trigger.toLowerCase(), []);
             }
@@ -159,94 +167,189 @@ function typeText(el, text, speed = 25) {
 }
 
 /* =====================
-   WORD GAME
+   WORD GAME FUNCTIONS
 ===================== */
-let wordGameHistory = [];
-let booword = false;
-let lastWord = "";
 
-function restoreGame() {
+// ===== ФУНКЦІЯ ДЛЯ ОТРИМАННЯ ОСТАННЬОЇ ЛІТЕРИ =====
+function getLastLetter(word) {
+    if (!word || word.length === 0) return '';
+    
+    let lastChar = word.slice(-1).toLowerCase();
+    
+    // Якщо остання літера - м'який знак або апостроф, беремо попередню
+    if (lastChar === 'ь' || lastChar === "'") {
+        if (word.length > 1) {
+            return word.slice(-2, -1).toLowerCase();
+        }
+    }
+    
+    return lastChar;
+}
+
+// ===== ІНІЦІАЛІЗАЦІЯ СЛОВНИКА ГРИ =====
+function initGameDictionary() {
+    if (!gameDictionary && mainDictionary && Array.isArray(mainDictionary)) {
+        // Створюємо словник за першими літерами
+        gameDictionary = {};
+        
+        mainDictionary.forEach(word => {
+            if (typeof word === 'string' && word.length >= 2) {
+                const firstLetter = word[0].toLowerCase();
+                if (firstLetter !== "ь" && firstLetter !== "'") {
+                    if (!gameDictionary[firstLetter]) {
+                        gameDictionary[firstLetter] = [];
+                    }
+                    gameDictionary[firstLetter].push(word.toLowerCase());
+                }
+            }
+        });
+        
+        console.log("Словник гри ініціалізовано. Літери:", Object.keys(gameDictionary).length);
+    } else if (!gameDictionary) {
+        // Резервний словник
+        gameDictionary = {
+            'к': ["кіт", "кінь", "книга", "камінь", "карта", "квітка"],
+            'т': ["тато", "тіто", "тінь", "трава", "тіло", "тісто"],
+            'о': ["омар", "око", "осінь", "овес", "олива", "орган"],
+            'р': ["рак", "рука", "річка", "рот", "роза", "риба"],
+            'м': ["мама", "місто", "місяць", "миша", "море", "молоко"],
+            'с': ["сон", "стіл", "сонце", "сніг", "сіно", "сало"],
+            'л': ["луна", "ліс", "лист", "лампа", "ліжко", "літак"],
+            'а': ["авто", "арка", "аїст", "акра", "абетка", "автор"],
+            'н': ["ніс", "ніч", "ніж", "небо", "нірка", "нога"],
+            'д': ["дім", "день", "дощ", "діжка", "дуб", "діра"],
+            'п': ["папір", "парк", "пісня", "пальто", "поле", "птах"],
+            'г': ["гірка", "гуска", "гра", "голка", "гість", "гроші"],
+            'в': ["вікно", "вода", "вовк", "віз", "відро", "вітер"],
+            'ч': ["чай", "час", "човен", "черевики", "чоловік", "чайка"],
+            'х': ["хвіст", "хліб", "хмара", "художник", "хвіртка", "хвіст"],
+            'б': ["брат", "банк", "білка", "будинок", "береза", "борщ"],
+            'ж': ["жінка", "жираф", "журнал", "жук", "жито", "жменя"],
+            'з': ["зима", "зуб", "зірка", "заєць", "земля", "зошит"],
+            'ш': ["школа", "шафа", "шлях", "шістка", "шнурок", "шолом"],
+            'ц': ["церква", "цибуля", "цвях", "цикл", "цурпалок", "ціна"],
+            'ф': ["фігура", "фікус", "фен", "фото", "футбол", "фарба"],
+            'ю': ["юшка", "юність", "ювелір", "юрист", "юпка", "юань"],
+            'я': ["яблуко", "ягода", "ящик", "ялинка", "ярмарок", "яйце"],
+            'і': ["ім'я", "інший", "ірис", "ідея", "іграшка", "ікона"],
+            'е': ["єнот", "євро", "єдинок", "єресь", "єгер", "ємність"],
+            'у': ["вухо", "вулиця", "вузол", "вушко", "вугіль", "вус"]
+        };
+    }
+}
+
+// ===== СКИНУТИ ГРУ =====
+function restoreDictionaries() {
+    gameDictionary = null; // Примусово переініціалізуємо
     lastWord = "";
     booword = false;
-    wordGameHistory = [];
+    console.log("Гру скинуто");
 }
 
-function generateBotWord(lastLetter) {
-    const availableWords = mainDictionary && Array.isArray(mainDictionary)
-        ? mainDictionary.filter(w => 
-            typeof w === 'string' &&
-            w.length >= 2 &&
-            w.length <= 15 &&
-            w[0] === lastLetter &&
-            w[0] !== "ь" &&
-            w[0] !== "'"
-        )
-        : ["кіт", "тато", "омар", "рак", "корова", "авто", "орел", "лист", "стіл", "луна"];
-
-    if (!availableWords.length) {
-        const fallbackWords = mainDictionary && Array.isArray(mainDictionary)
-            ? mainDictionary.filter(w => 
-                typeof w === 'string' &&
-                w.length >= 2 &&
-                w[0] !== "ь" &&
-                w[0] !== "'"
-            )
-            : ["кіт", "тато", "омар", "рак"];
-
-        return fallbackWords.length > 0 
-            ? fallbackWords[Math.floor(Math.random() * fallbackWords.length)]
-            : "слово";
-    }
-
-    return availableWords[Math.floor(Math.random() * availableWords.length)];
-}
-
+// ===== ОСНОВНА ЛОГІКА ГРИ В СЛОВА =====
 function wordGameLogic(userWord) {
-    userWord = normalizeText(userWord);
-
+    // Ініціалізуємо словник, якщо ще не ініціалізований
+    initGameDictionary();
+    
+    userWord = userWord.toLowerCase().trim();
+    
     if (userWord.length < 2) {
-        return "Слово закоротке 🤔";
+        return "Слово повинно мати хоча б дві літери!";
     }
-
+    
     if (userWord[0] === "ь" || userWord[0] === "'") {
-        return "Слова не можуть починатися на Ь або апостроф ❌";
+        return 'Слова не можуть починатися на "Ь" або апостроф ❌';
     }
 
-    if (wordGameHistory.includes(userWord)) {
-        return "Це слово вже було! Спробуй інше 🔄";
-    }
-
-    wordGameHistory.push(userWord);
-
-    if (wordGameHistory.length > 50) {
-        wordGameHistory = wordGameHistory.slice(-50);
-    }
-
-    if (!lastWord) {
-        lastWord = userWord;
-        const botWord = generateBotWord(lastWord.at(-1));
-        if (!botWord) {
-            return "Я не знаю слів на цю літеру... Почни знову!";
+    // ===== ПОЧАТОК ГРИ =====
+    if (lastWord === "") {
+        let availableLetters = Object.keys(gameDictionary).filter(
+            k => gameDictionary[k] && gameDictionary[k].length > 0
+        );
+        
+        if (availableLetters.length === 0) {
+            restoreDictionaries();
+            return "Вибач, у мене закінчилися слова для початку гри! 🥺";
         }
-        lastWord = botWord;
-        wordGameHistory.push(botWord);
-        return `Моє слово: ${botWord.toUpperCase()}. Тобі на ${botWord.at(-1).toUpperCase()}`;
+
+        // Вибираємо випадкову літеру
+        let randomLetter = availableLetters[Math.floor(Math.random() * availableLetters.length)];
+        
+        // Вибираємо слово з цієї літери
+        let possibleWords = gameDictionary[randomLetter];
+        if (!possibleWords || possibleWords.length === 0) {
+            restoreDictionaries();
+            return wordGameLogic(userWord); // Рекурсивно починаємо заново
+        }
+        
+        let firstWord = possibleWords[Math.floor(Math.random() * possibleWords.length)];
+        
+        // Видаляємо слово зі словника
+        const index = gameDictionary[randomLetter].indexOf(firstWord);
+        if (index > -1) {
+            gameDictionary[randomLetter].splice(index, 1);
+        }
+        
+        lastWord = firstWord;
+        const requiredLetter = getLastLetter(firstWord);
+        
+        return `🎮 Гра почалась! 
+Моє слово: **${firstWord.toUpperCase()}**. 
+Твоє слово має починатися на **${requiredLetter.toUpperCase()}**.`;
     }
 
-    if (userWord[0] !== lastWord.at(-1)) {
-        return `Треба на "${lastWord.at(-1).toUpperCase()}" ❌`;
+    // ===== ПЕРЕВІРКА ВІДПОВІДНОСТІ ЛІТЕРИ =====
+    const requiredLetter = getLastLetter(lastWord);
+    
+    if (userWord[0].toLowerCase() !== requiredLetter) {
+        return `❌ Твоє слово має починатися на **"${requiredLetter.toUpperCase()}"**! 
+Останнє слово було: **${lastWord.toUpperCase()}**`;
     }
 
-    const botWord = generateBotWord(userWord.at(-1));
-    if (!botWord) {
-        return "Я не знаю слів на цю літеру... Перемага твоя! 🏆";
+    // ===== ПЕРЕВІРКА, ЧИ СЛОВО ВЖЕ ВИКОРИСТОВУВАЛОСЬ =====
+    // Перевіряємо всі слова в словнику
+    for (const letter in gameDictionary) {
+        if (gameDictionary[letter].includes(userWord)) {
+            // Видаляємо це слово
+            const index = gameDictionary[letter].indexOf(userWord);
+            if (index > -1) {
+                gameDictionary[letter].splice(index, 1);
+            }
+            break;
+        }
     }
 
-    lastWord = botWord;
-    wordGameHistory.push(botWord);
+    // ===== ВІДПОВІДЬ БОТА =====
+    const lastLetterOfUserWord = getLastLetter(userWord);
+    let possibleWords = gameDictionary[lastLetterOfUserWord] || [];
+    
+    // Фільтруємо слова, що починаються на потрібну літеру
+    possibleWords = possibleWords.filter(w => w[0].toLowerCase() !== "ь" && w[0].toLowerCase() !== "'");
+    
+    if (possibleWords.length === 0) {
+        restoreDictionaries();
+        return `🏆 **Ти виграв(ла)!** 
+Я більше не маю слів на букву **${lastLetterOfUserWord.toUpperCase()}**!
+Останнє слово: **${userWord.toUpperCase()}**`;
+    }
 
-    return `Моє слово: ${botWord.toUpperCase()}. Тобі на ${botWord.at(-1).toUpperCase()}`;
+    // Вибираємо слово
+    let yushiWord = possibleWords[Math.floor(Math.random() * possibleWords.length)];
+    
+    // Видаляємо його зі словника
+    const wordIndex = gameDictionary[lastLetterOfUserWord].indexOf(yushiWord);
+    if (wordIndex > -1) {
+        gameDictionary[lastLetterOfUserWord].splice(wordIndex, 1);
+    }
+    
+    lastWord = yushiWord;
+    const nextLetter = getLastLetter(yushiWord);
+    
+    return `✅ **${userWord.toUpperCase()}** — гарне слово!
+Моє слово: **${yushiWord.toUpperCase()}**.
+Твоє наступне слово має починатися на **${nextLetter.toUpperCase()}**.`;
 }
+//{{{{{{{ ST2 }}}}}}}}}
 
 /* =====================
    TEXT HELPERS
@@ -448,9 +551,7 @@ const LOVE_KEYWORDS = {
         points: -3
     }
 };
-/*
-}}}}}}}}}} ST 2 {{{{{{{{
-*/
+
 /* =====================
    LOVE CALCULATION
 ===================== */
@@ -516,7 +617,6 @@ function updateLoveBasedOnMessage(text) {
     localStorage.setItem('last_love_update', Date.now());
 }
 
-
 /* =====================
    BAD WORDS
 ===================== */
@@ -529,6 +629,7 @@ function containsBadWords(text) {
     const normalized = normalizeText(text);
     return BAD_WORDS.some(word => normalized.includes(word));
 }
+//{{{{{{{{{{{ ST2 }}}}}}}}}
 
 /* =====================
    MATCH PHRASES - ПОКРАЩЕНА ВЕРСІЯ
@@ -739,49 +840,87 @@ function calculateMath(expression) {
     }
 }
 
-/* =====================
-   BOT BRAIN
-===================== */
+// ===== ОНОВЛЕНА ФУНКЦІЯ botAnswer =====
 function botAnswer(text) {
     if (typeof text !== 'string' || !text.trim()) return null;
+    
     const lower = normalizeText(text);
     const original = text.trim();
     
+    // Час та дата
     if (lower.includes("котра година") || lower.includes("час") || lower.includes("скільки годин")) {
         const time = new Date();
-        return  `Зараз ${time.getHours()}:${String(time.getMinutes()).padStart(2,"0")} ⏰`;
+        return `Зараз ${time.getHours()}:${String(time.getMinutes()).padStart(2,"0")} ⏰`;
     }
-  if(lower.includes("дата") || lower.includes("яке сьогодні число") || lower.includes("який сьогодні день")) {
-    const dataTimeOfMonth = new Date();
-    const monthData = dataTimeOfMonth.getMonth();
-    const day = dataTimeOfMonth.getDate();
-    const montOfData =[ "Січня", "Лютого", "Березня", "Квітня", "Травня", "Червня","Липня", "Серпня", "Вересня", "Жовтня", "Листопада", "Грудня" ];
-    return `Сьогодні ${day} ${montOfData[monthData]} 📅`;
+    
+    if(lower.includes("дата") || lower.includes("яке сьогодні число") || lower.includes("який сьогодні день")) {
+        const dataTimeOfMonth = new Date();
+        const monthData = dataTimeOfMonth.getMonth();
+        const day = dataTimeOfMonth.getDate();
+        const montOfData = [ 
+            "Січня", "Лютого", "Березня", "Квітня", "Травня", "Червня",
+            "Липня", "Серпня", "Вересня", "Жовтня", "Листопада", "Грудня" 
+        ];
+        return `Сьогодні ${day} ${montOfData[monthData]} 📅`;
     }
-    //сам написав цю вункцію (чесно)
-        const love = Number(localStorage.getItem("love") || 40)
-        if (love <= 19 && lower.includes("ти сумна") || lower.includes("ти засмучена") || lower.includes("тобі сумно")) {
-            const answerToSad = [
-            "Навіщо тобі це знати, цікаво?",
-            "Ти справді хочеш про це поговорити?",
-            "Можливо. А тобі яке до цього діло?"
-            ];
-           const answ = answerToSad[Math.floor(Math.random() * answerToSad.length) ];
-           return answ
-          }
-          
-    const stopCommands = ["стоп", "стоп гра", "стоп слова", "закінчити", "кінець гри"];
+    
+    // ===== СТОП ГРИ =====
+    const stopCommands = ["стоп", "стоп гра", "стоп слова", "закінчити", "кінець гри", "хватит", "стоп-гра"];
     if (stopCommands.includes(lower)) {
-        restoreGame();
-        return "Гру зупинено ✅";
+        restoreDictionaries();
+        return "🛑 Гра зупинена. Для початку нової гри напиши 'гра в слова'";
     }
-
-    if (lower.startsWith("слово:") || lower.startsWith("слово ") || booword) {
+    
+    // ===== ПОЧАТОК ГРИ =====
+    const startCommands = [
+        "гра в слова", "давай грати", "почати гру", "слова", 
+        "хочу грати", "почнімо гру", "грати в слова"
+    ];
+    
+    if (startCommands.includes(lower)) {
+        restoreDictionaries(); // Скидаємо попередню гру
         booword = true;
-        const word = lower.replace(/^слово[:\s]+/, "");
-        return wordGameLogic(word);
-    }
+        return `🎮 **Гра в слова розпочата!**
+        
+Правила:
+1. Я називаю слово
+2. Ти називаєш слово на останню літеру мого слова
+3. Я відповідаю словом на останню літеру твого слова
+4. І так далі...
 
+⚠️ М'який знак (ь) на кінці не враховується!
+
+**Напиши будь-яке слово для початку!**`;
+    }
+    
+    // ===== ГРА В СЛОВА =====
+    if (booword || original.toLowerCase().startsWith("слово:") || original.toLowerCase().startsWith("слова:")) {
+        booword = true;
+        
+        let userWord = original;
+        
+        // Видаляємо префікси
+        if (userWord.toLowerCase().startsWith("слово:")) {
+            userWord = userWord.substring(6).trim();
+        } else if (userWord.toLowerCase().startsWith("слова:")) {
+            userWord = userWord.substring(5).trim();
+        }
+        
+        // Якщо після видалення префіксів нічого не залишилося
+        if (!userWord || userWord.length === 0) {
+            if (lastWord === "") {
+                return "Напиши будь-яке слово для початку гри! ✍️";
+            } else {
+                const requiredLetter = getLastLetter(lastWord);
+                return `Чекаю на твоє слово! Воно має починатися на **${requiredLetter.toUpperCase()}** 
+(Останнє слово було: ${lastWord.toUpperCase()})`;
+            }
+        }
+        
+        return wordGameLogic(userWord);
+    }
+    
+    // Математичні обчислення
     if (/^[\d+\-*/().=\s]+$/.test(original)) {
         const cleaned = original.replace(/=/g, "").trim();
         const result = calculateMath(cleaned);
@@ -793,6 +932,7 @@ function botAnswer(text) {
         }
     }
 
+    // Зміна імені
     if (lower.startsWith("мене звати ")) {
         const newName = text.slice(11).trim();
         if (newName && newName.length > 0 && newName.length <= 20) {
@@ -848,6 +988,7 @@ function getYushiResponse(text) {
 
     return response;
 }
+//{{{{{{{{{{ ST4 }}}}}}}}}}}}
 
 /* =====================
    MESSAGE HANDLER
@@ -884,7 +1025,41 @@ function onUserMessage(message) {
 
     lastUserText = message;
 
-    // Get response
+    // ===== НОВА ПЕРЕВІРКА ДЛЯ ГРИ В СЛОВА =====
+    // Якщо ми в режимі гри і користувач пише одне слово (без пробілів)
+    if (booword && 
+        message.length >= 2 && 
+        message.length <= 20 &&
+        !message.includes(" ") && 
+        /^[\p{L}'\-]+$/u.test(message) && // Дозволяємо літери, апостроф, дефіс
+        !message.startsWith("слово:") && // Не є командою
+        !message.startsWith("слова:")) {
+        
+        console.log("Обробляємо як слово для гри:", message);
+        
+        // Показуємо текст користувача
+        mytext.textContent = message;
+        proverbsWords.push(message);
+        if (proverbsWords.length > 100) {
+            proverbsWords.shift();
+        }
+        localStorage.setItem("proverbsWords", JSON.stringify(proverbsWords));
+        
+        // Показуємо, що бот думає
+        yushitext.textContent = "Юші набирає...";
+        
+        // Затримка і обробка гри
+        setTimeout(() => {
+            const response = wordGameLogic(message);
+            typeText(yushitext, response);
+            startWaitingTimer();
+        }, 400);
+        
+        return; // Важливо: завершуємо функцію тут
+    }
+    // ===== КІНЕЦЬ НОВОЇ ПЕРЕВІРКИ =====
+
+    // Get response (оригінальна логіка)
     let response = botAnswer(message);
     if (!response) response = getYushiResponse(message);
 
@@ -909,16 +1084,26 @@ function inputtext() {
     const msg = textinput.value.trim();
     if (!msg) return;
 
+    // Відображаємо текст користувача
     mytext.textContent = msg;
+    
+    // Додаємо в історію
     proverbsWords.push(msg);
     if (proverbsWords.length > 100) {
-        proverbsWords.shift(); // Зберігаємо тільки останні 100 повідомлень
+        proverbsWords.shift();
     }
     localStorage.setItem("proverbsWords", JSON.stringify(proverbsWords));
+    
+    // Очищуємо поле введення
     textinput.value = "";
+    
+    // Показуємо, що бот набирає
     yushitext.textContent = "Юші набирає...";
+    
+    // Викликаємо обробку повідомлення
     setTimeout(() => onUserMessage(msg), 400);
 }
+
 /* =====================
    EVENTS
 ===================== */
@@ -934,6 +1119,19 @@ avatarEl.addEventListener("click", () => {
         setTimeout(function(){
             avatarEl.src = AVATARS.normal
         },1500)
+    }
+});
+
+const uuidInput = document.querySelector(".uuid-key");
+let uuidKey = 
+localStorage.setItem("uuidCode","uuidRid@Tr")
+uuidInput.addEventListener("keydown", e => {
+    if (e.key === "Enter") {
+        if(uuidInput.value == localStorage.getItem("uuidCode")){
+        uuidKey = localStorage.getItem("uuidCode")
+        uuidInput.value = ""
+        return uuidKey
+        }
     }
 })
 
@@ -973,6 +1171,6 @@ if (!localStorage.getItem('welcome_shown')) {
     }, 1000);
 }
 
-console.log("[ ", proverbsWords ," ]");
+console.log("|[\n ", proverbsWords ,"\n     ]|");
 console.log(localStorage.getItem("love"));
 //localStorage.removeItem("proverbsWords")
